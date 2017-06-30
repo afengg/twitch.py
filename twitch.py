@@ -227,17 +227,14 @@ def twitchirc(bot, trigger, match = None):
   streaming = requests.get('https://api.twitch.tv/kraken/streams', params={"channel": ",".join(query)}, headers={"Client-ID":twitchclientid}).json()
   results = []
   if streaming.get("streams"):
-    for streamer in streaming["streams"]:
-      streamer_name = streamer["channel"]["name"]
-      streamer_game = streamer["channel"]["game"]
-      streamer_status = streamer["channel"]["status"]
-      streamer_viewers = streamer["viewers"]
-
-      results.append("%s is playing %s [%s] - %s viewer%s" % (streamer_name,
-                                                           streamer_game,
-                                                           streamer_status,
-                                                           streamer_viewers,
-                                                           "s" if streamer_viewers != 1 else "" ))
+    twitch_gen = twitch_generator(streaming)
+    for streamer in twitch_gen:
+      results.append("%s is playing %s [%s] (%s - %s viewer%s)" % (streamer["name"],
+                                                                   streamer["game"],
+                                                                   streamer["status"],
+                                                                   streamer["url"],
+                                                                   streamer["viewers"],
+                                                                   "s" if streamer["viewers"] != 1 else ""))
   if results:
     bot.say(", ".join(results))
   else:
