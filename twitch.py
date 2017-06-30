@@ -150,12 +150,12 @@ def streamer_status(bot, trigger):
   if streaming.get("streams"):
     twitch_gen = twitch_generator(streaming)
     for streamer1 in twitch_gen:
-      results.append("%s is playing %s [%s] (%s - %s viewer%s") % (streamer1["name"],
+      results.append("%s is playing %s [%s] (%s - %s viewer%s)" % (streamer1["name"],
                                                                    streamer1["game"],
                                                                    streamer1["status"],
                                                                    streamer1["url"],
-                                                                   streamer1["viewers"]
-                                                                   "s" if streamer1["viewers"] != 1 else "")
+                                                                   streamer1["viewers"],
+                                                                   "s" if streamer1["viewers"] != 1 else ""))
   if results:
     bot.say(", ".join(results))
   else:
