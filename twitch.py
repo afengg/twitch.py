@@ -80,7 +80,7 @@ def monitor_streamers(bot):
     twitch_gen = twitch_generator(streaming)
     for streamer in twitch_gen:
       if streamer["name"] not in currently_streaming:
-        currently_streaming[streamer["name"]] = streamer["game"], {'cooldown': 0, 'starttime': streamer_starttime}
+        currently_streaming[streamer["name"]] = streamer["game"], {'cooldown': 0, 'starttime': streamer["starttime"]}
         results.append("%s just went live playing %s! [%s] (%s - %s viewer%s)" % (streamer["name"],
                                                                                   streamer["game"],
                                                                                   streamer["status"],
