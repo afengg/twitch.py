@@ -77,23 +77,17 @@ def monitor_streamers(bot):
     return print("There was an error reading twitch API  {0}".format(e))
   results = []
   if streaming.get("streams"):
-    for streamer in streaming["streams"]:
-      streamer_name = streamer["channel"]["name"]
-      streamer_game = streamer["channel"]["game"]
-      streamer_status = streamer["channel"]["status"]
-      streamer_url = streamer["channel"]["url"]
-      streamer_starttime = datetime.datetime.strptime(streamer['created_at'], '%Y-%m-%dT%H:%M:%SZ')
-      streamer_viewers = streamer["viewers"]
-    
-      if streamer_name not in currently_streaming:
-        currently_streaming[streamer_name] = streamer_game, {'cooldown': 0, 'starttime': streamer_starttime}
-        results.append("%s just went live playing %s! [%s] (%s - %s viewer%s)" % (streamer_name, 
-                                                                          streamer_game, 
-                                                                          streamer_status,
-                                                                          streamer_url, 
-                                                                          streamer_viewers, 
-                                                                          "s" if streamer_viewers != 1 else ""))
-      streaming_names.append(streamer_name)
+    twitch_gen = twitch_generator(streaming)
+    for streamer in twitch_gen:
+      if streamer["name"] not in currently_streaming:
+        currently_streaming[streamer["name"]] = streamer["game"], {'cooldown': 0, 'starttime': streamer_starttime}
+        results.append("%s just went live playing %s! [%s] (%s - %s viewer%s)" % (streamer["name"],
+                                                                                  streamer["game"],
+                                                                                  streamer["status"],
+                                                                                  streamer["url"],
+                                                                                  streamer["viewers"],
+                                                                                  "s" if streamer["viewers"] != 1 else ""))
+      streaming_names.append(streamer["name"])
 
   if results:
     bot.msg(announce_chan, ", ".join(results))  
@@ -149,13 +143,13 @@ def streamer_status(bot, trigger):
   results = []
   if streaming.get("streams"):
     twitch_gen = twitch_generator(streaming)
-    for streamer1 in twitch_gen:
-      results.append("%s is playing %s [%s] (%s - %s viewer%s)" % (streamer1["name"],
-                                                                   streamer1["game"],
-                                                                   streamer1["status"],
-                                                                   streamer1["url"],
-                                                                   streamer1["viewers"],
-                                                                   "s" if streamer1["viewers"] != 1 else ""))
+    for streamer in twitch_gen:
+      results.append("%s is playing %s [%s] (%s - %s viewer%s)" % (streamer["name"],
+                                                                   streamer["game"],
+                                                                   streamer["status"],
+                                                                   streamer["url"],
+                                                                   streamer["viewers"],
+                                                                   "s" if streamer["viewers"] != 1 else ""))
   if results:
     bot.say(", ".join(results))
   else:
@@ -195,19 +189,14 @@ def allstreamer_status(bot, trigger):
   streaming = requests.get('https://api.twitch.tv/kraken/streams', params={"channel": ",".join(query)}, headers={"Client-ID":twitchclientid}).json()
   results = []
   if streaming.get("streams"):
-    for streamer in streaming["streams"]:
-      streamer_name = streamer["channel"]["name"]
-      streamer_game = streamer["channel"]["game"]
-      streamer_status = streamer["channel"]["status"]
-      streamer_url = streamer["channel"]["url"]
-      streamer_viewers = streamer["viewers"]
-
-      results.append("%s is playing %s [%s] (%s - %s viewer%s)" % (streamer_name,
-                                                           streamer_game,
-                                                           streamer_status,
-                                                           streamer_url,
-                                                           streamer_viewers,
-                                                           "s" if streamer_viewers != 1 else "" ))
+    twitch_gen = twitch_generator(streaming)
+    for streamer in twitch_gen:
+      results.append("%s is playing %s [%s] (%s - %s viewer%s)" % (streamer["name"],
+                                                                   streamer["game"],
+                                                                   streamer["status"],
+                                                                   streamer["url"],
+                                                                   streamer["viewers"],
+                                                                   "s" if streamer["viewers"] != 1 else ""))
   query = ",".join(hstreamers)
   hstreaming = requests.get('http://api.smashcast.tv/media/live/{0}'.format(query)).json()
   hresults = []
