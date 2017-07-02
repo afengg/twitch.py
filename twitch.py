@@ -57,6 +57,11 @@ currently_streaming = {}
 currently_hstreaming = {}
 currently_ystreaming = {}
 
+def twitch_api(stream_list):
+  """ Returns the result of the http request from Twitch's api """
+  return requests.get('https://api.twitch.tv/kraken/streams', params={"channel": ",".join(stream_list)}, headers={"Client-ID": twitchclientid}).json()
+
+
 def twitch_generator(streaming):
   for streamer in streaming["streams"]:
     streamer_dict = {}
@@ -68,11 +73,22 @@ def twitch_generator(streaming):
     streamer_dict["viewers"] = streamer["viewers"]
     yield streamer_dict
 
+def smash_generator(hstreaming):
+  for streamer in streaming['livestream']:
+    if streamer["media_is_live"] is "1":
+      streamer_dict = {}
+      streamer_dict["name"] = streamer["media_user_name"]
+      streamer_dict["game"] = streamer["category_name"]
+      streamer_dict["url"] = streamer["channel"]["channel_link"]
+      streamer_dict["viewers"] = streamer["media_views"]
+      yield streamer_dict
+
 @sopel.module.interval(20)
 def monitor_streamers(bot):
   streaming_names = []
   try:
-    streaming = requests.get('https://api.twitch.tv/kraken/streams', params={"channel": ",".join(streamers)}, headers={"Client-ID":twitchclientid}).json()
+    streaming = twitch_api(streamers)
+    # streaming = requests.get('https://api.twitch.tv/kraken/streams', params={"channel": ",".join(streamers)}, headers={"Client-ID":twitchclientid}).json()
   except Exception as  e:
     return print("There was an error reading twitch API  {0}".format(e))
   results = []
@@ -111,18 +127,13 @@ def monitor_streamers(bot):
     #return bot.msg(logchannel,"error with smashcast api")
   hresults = []
   if hstreaming.get("livestream"):
-    for hstreamer in hstreaming["livestream"]:
-      if hstreamer["media_is_live"] is "1":
-        hstreamer_name = hstreamer["media_user_name"]
-        hstreamer_game = hstreamer["category_name"]
-        hstreamer_url = hstreamer["channel"]["channel_link"]
-        hstreamer_viewers = hstreamer["media_views"]
-      
-        if hstreamer_name not in currently_hstreaming:
-          currently_hstreaming[hstreamer_name] = hstreamer_game, {'cooldown': 0}
-          hresults.append("%s just went live playing %s! (%s - %s viewer%s)" % (hstreamer_name,hstreamer_game,hstreamer_url,hstreamer_viewers,"s" if hstreamer_viewers != 1 else ""))
+    smash_gen = smash_generator(hstreaming)
+    for hstreamer in smash_gen:     
+      if hstreamer["name"] not in currently_hstreaming:
+        currently_hstreaming[hstreamer["name"]] = hstreamer["game"], {'cooldown': 0}
+        hresults.append("%s just went live playing %s! (%s - %s viewer%s)" % (hstreamer["name"],hstreamer["game"],hstreamer["url"],hstreamer["viewers"],"s" if hstreamer["viewers"] != 1 else ""))
 
-        hstreaming_names.append(hstreamer_name)
+        hstreaming_names.append(hstreamer["name"])
 
   if hresults:
     bot.msg(announce_chan, ", ".join(hresults))
@@ -138,8 +149,11 @@ def monitor_streamers(bot):
 def streamer_status(bot, trigger):
   streamer_name = trigger.group(2)
   query = streamers if streamer_name is None else streamer_name.split(" ")
-
-  streaming = requests.get('https://api.twitch.tv/kraken/streams', params={"channel": ",".join(query)}, headers={"Client-ID":twitchclientid}).json()
+  try:
+    streaming = twitch_api(query)
+    # streaming = requests.get('https://api.twitch.tv/kraken/streams', params={"channel": ",".join(query)}, headers={"Client-ID":twitchclientid}).json()
+  except Exception as  e:
+    return print("There was an error reading twitch API  {0}".format(e))
   results = []
   if streaming.get("streams"):
     twitch_gen = twitch_generator(streaming)
@@ -163,18 +177,14 @@ def hstreamer_status(bot, trigger):
   query = ",".join(hstreamers) if hstreamer_name is None else hstreamer_name
   hstreaming = requests.get('http://api.smashcast.tv/media/live/{0}'.format(query)).json()
   hresults = []
-  for hstreamer in hstreaming["livestream"]:
-    if hstreamer["media_is_live"] is "1":
-        hstreamer_name = hstreamer["media_user_name"]
-        hstreamer_game = hstreamer["category_name"]
-        hstreamer_url = hstreamer["channel"]["channel_link"]
-        hstreamer_viewers = hstreamer["media_views"]
-    
-        hresults.append("%s is playing %s (%s - %s viewer%s)" % (hstreamer_name,
-                                                           hstreamer_game,
-                                                           hstreamer_url,
-                                                           hstreamer_viewers,
-                                                           "s" if hstreamer_viewers != 1 else "" ))
+  if hstreaming.get("livestream"):
+    smash_gen = smash_generator(hstreaming)
+    for hstreamer in smash_gen:  
+      hresults.append("%s is playing %s (%s - %s viewer%s)" % (hstreamer["name"],
+                                                           hstreamer["game"],
+                                                           hstreamer["url"],
+                                                           hstreamer["viewers"],
+                                                           "s" if hstreamer["viewers"] != 1 else "" ))
   if hresults:
     bot.say(", ".join(hresults))
   else:
@@ -185,8 +195,11 @@ def hstreamer_status(bot, trigger):
 def allstreamer_status(bot, trigger):
   streamer_name = trigger.group(2)
   query = streamers if streamer_name is None else streamer_name.split(" ")
-
-  streaming = requests.get('https://api.twitch.tv/kraken/streams', params={"channel": ",".join(query)}, headers={"Client-ID":twitchclientid}).json()
+  try:
+    streaming = twitch_api(query)
+    # streaming = requests.get('https://api.twitch.tv/kraken/streams', params={"channel": ",".join(query)}, headers={"Client-ID":twitchclientid}).json()
+  except Exception as  e:
+    return print("There was an error reading twitch API  {0}".format(e))
   results = []
   if streaming.get("streams"):
     twitch_gen = twitch_generator(streaming)
@@ -201,18 +214,13 @@ def allstreamer_status(bot, trigger):
   hstreaming = requests.get('http://api.smashcast.tv/media/live/{0}'.format(query)).json()
   hresults = []
   if hstreaming.get("livestream"):
-    for hstreamer in hstreaming["livestream"]:
-      if hstreamer["media_is_live"] is "1":
-          hstreamer_name = hstreamer["media_user_name"]
-          hstreamer_game = hstreamer["category_name"]
-          hstreamer_url = hstreamer["channel"]["channel_link"]
-          hstreamer_viewers = hstreamer["media_views"]
-
-          results.append("%s is playing %s (%s - %s viewer%s)" % (hstreamer_name,
-                                                           hstreamer_game,
-                                                           hstreamer_url,
-                                                           hstreamer_viewers,
-                                                           "s" if hstreamer_viewers != 1 else "" ))
+    smash_gen = smash_generator(hstreaming)
+    for hstreamer in smash_gen:  
+      hresults.append("%s is playing %s (%s - %s viewer%s)" % (hstreamer["name"],
+                                                           hstreamer["game"],
+                                                           hstreamer["url"],
+                                                           hstreamer["viewers"],
+                                                           "s" if hstreamer["viewers"] != 1 else "" ))
 
   if results:
     bot.say(", ".join(results))
@@ -224,7 +232,11 @@ def twitchirc(bot, trigger, match = None):
   match = match or trigger
   streamer_name = match.group(1)
   query = streamers if streamer_name is None else streamer_name.split(" ")
-  streaming = requests.get('https://api.twitch.tv/kraken/streams', params={"channel": ",".join(query)}, headers={"Client-ID":twitchclientid}).json()
+  try:
+    streaming = twitch_api(query)
+    # streaming = requests.get('https://api.twitch.tv/kraken/streams', params={"channel": ",".join(query)}, headers={"Client-ID":twitchclientid}).json()
+  except Exception as  e:
+    return print("There was an error reading twitch API  {0}".format(e))
   results = []
   if streaming.get("streams"):
     twitch_gen = twitch_generator(streaming)
