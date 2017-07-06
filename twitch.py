@@ -74,7 +74,7 @@ def twitch_generator(streaming):
     yield streamer_dict
 
 def smash_generator(hstreaming):
-  for streamer in streaming['livestream']:
+  for streamer in hstreaming["livestream"]:
     if streamer["media_is_live"] is "1":
       streamer_dict = {}
       streamer_dict["name"] = streamer["media_user_name"]
@@ -122,9 +122,9 @@ def monitor_streamers(bot):
     testingtimeout = datetime.datetime.now()
     hstreaming = requests.get('http://api.smashcast.tv/media/live/{0}'.format(hs),timeout=(1.5,1.5)).json()
   except requests.exceptions.ConnectionError:
-    #return bot.msg(logchannel,"timeout time: {}".format((datetime.datetime.now() - testingtimeout).total_seconds()))
+    return bot.msg(logchannel,"timeout time: {}".format((datetime.datetime.now() - testingtimeout).total_seconds()))
   except:
-    #return bot.msg(logchannel,"error with smashcast api")
+    return bot.msg(logchannel,"error with smashcast api")
   hresults = []
   if hstreaming.get("livestream"):
     smash_gen = smash_generator(hstreaming)
@@ -277,8 +277,6 @@ def mixerirc(bot, trigger, match = None):
     bot.say(", ".join(results))
   else:
     pass
-
-@sopel.module.rule
 
 @sopel.module.commands('debugtv')
 def debug(bot, trigger):
